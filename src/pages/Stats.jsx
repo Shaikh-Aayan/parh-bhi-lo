@@ -51,6 +51,8 @@ export default function Stats() {
     addToast(`Reminder sent to ${member.display_name}! 🔔`, 'info');
   };
 
+  const bannedIds = useMemo(() => new Set(members.filter(m => m.banned).map(m => m.id)), [members]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -59,7 +61,6 @@ export default function Stats() {
     );
   }
 
-  const myStats = stats.find(s => s.user_id === profile.id);
   const todayMandatory = todayArticles.filter(a => a.is_mandatory);
   // Daily Quota logic: if there are mandatory articles today, quota is that count. Otherwise fallback to settings.
   const dailyTarget = todayMandatory.length > 0 ? todayMandatory.length : (settings?.daily_article_target || 5);
@@ -71,7 +72,7 @@ export default function Stats() {
       </div>
 
       <div className="space-y-3">
-        {stats.map((userStat, index) => (
+        {stats.filter(s => !bannedIds.has(s.user_id)).map((userStat, index) => (
           <div 
             key={userStat.user_id} 
             className={`flex items-center p-4 rounded-2xl border premium-card ${
@@ -107,7 +108,7 @@ export default function Stats() {
             <p className="text-sm font-bold text-[var(--color-text-secondary)]">
               Today's Mandatory Articles: {todayMandatory.length}
             </p>
-            {members.map(member => {
+            {members.filter(m => !m.banned).map(member => {
               const readCount = todayMandatory.filter(art => 
                 todayInteractions.some(i => i.article_id === art.id && i.user_id === member.id && i.is_read)
               ).length;

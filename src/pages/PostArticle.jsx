@@ -20,6 +20,7 @@ export default function PostArticle() {
   const [url, setUrl] = useState('');
   const [summary, setSummary] = useState('');
   const [tagId, setTagId] = useState('');
+  const [tagSearch, setTagSearch] = useState('');
   
   // Overrides State
   const [isMandatory, setIsMandatory] = useState(true);
@@ -132,13 +133,37 @@ export default function PostArticle() {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-[var(--color-text-secondary)] mb-1">Topic</label>
-            <select 
-              value={tagId} onChange={e => setTagId(e.target.value)}
+            <label className="block text-sm font-semibold text-[var(--color-text-secondary)] mb-1">Topic / Domain</label>
+            <input
+              type="text"
+              value={tagSearch}
+              onChange={e => setTagSearch(e.target.value)}
+              placeholder="Search domain..."
               className="w-full px-4 py-3 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            >
-              {tags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
+            />
+            <div className="mt-2 max-h-44 overflow-y-auto space-y-1 border border-[var(--color-border)] rounded-xl p-1 bg-white">
+              {tags
+                .filter(t => !t.archived && t.name.toLowerCase().includes(tagSearch.toLowerCase()))
+                .map(t => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => { setTagId(t.id); setTagSearch(''); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors ${
+                      tagId === t.id ? 'bg-[var(--color-accent-light)] text-[var(--color-accent)]' : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)]'
+                    }`}
+                  >
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                    {t.name}
+                    {tagId === t.id && <span className="ml-auto">✓</span>}
+                  </button>
+                ))}
+            </div>
+            {tags.find(t => t.id === tagId) && (
+              <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                Selected: <span className="font-bold" style={{ color: tags.find(t => t.id === tagId).color }}>{tags.find(t => t.id === tagId).name}</span>
+              </p>
+            )}
           </div>
         </section>
 

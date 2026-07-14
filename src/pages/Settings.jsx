@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { Loader2, Save, Plus, Trash2, ShieldAlert, BellRing } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, ShieldAlert, BellRing, Ban, UserCheck } from 'lucide-react';
 
 export default function Settings() {
   const { profile } = useAuth();
@@ -90,6 +90,18 @@ export default function Settings() {
   const handleDeleteAnnouncement = async (id) => {
     await supabase.from('announcements').delete().eq('id', id);
     setAnnouncements(announcements.filter(a => a.id !== id));
+  };
+
+  const handleToggleBan = async (member) => {
+    const willBan = !member.banned;
+    if (willBan && !confirm(`Ban ${member.display_name}? Unki saari baatein aur leaderboard entry chup ho jayegi (data delete nahi hoga).`)) return;
+    const { error } = await supabase.from('profiles').update({ banned: willBan }).eq('id', member.id);
+    if (!error) {
+      setMembers(members.map(m => m.id === member.id ? { ...m, banned: willBan } : m));
+      addToast(willBan ? `${member.display_name} ko ban kar diya.` : `${member.display_name} ko unban kar diya.`, willBan ? 'warning' : 'success');
+    } else {
+      addToast('Ban update fail ho gaya.', 'error');
+    }
   };
 
   const handleUpdateRole = async (memberId, newRole) => {
@@ -380,12 +392,24 @@ export default function Settings() {
           <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Registered Members ({members.length})</h2>
           <div className="space-y-3">
             {members.map(member => (
-              <div key={member.id} className="flex items-center justify-between py-3 border-b border-[var(--color-border)] last:border-0">
+              <div key={member.id} className={`flex items-center justify-between py-3 border-b border-[var(--color-border)] last:border-0 ${member.banned ? 'opacity-60' : ''}`}>
                 <div>
-                  <div className="font-bold text-[var(--color-text-primary)]">{member.display_name}</div>
+                  <div className="font-bold text-[var(--color-text-primary)] flex items-center gap-1.5">
+                    {member.display_name}
+                    {member.banned && <span className="text-[9px] font-bold uppercase bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Banned</span>}
+                  </div>
                   <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">{member.email}</div>
                 </div>
                 {member.id !== profile.id ? (
+                  <>
+                    <button
+                      onClick={() => handleToggleBan(member)}
+                      className={`p-2 rounded-lg transition-colors btn-squish mr-2 ${member.banned ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-50 text-red-600 hover:bg-red-100'}`}
+                      title={member.banned ? 'Unban user' : 'Ban user'}
+                    >
+                      {member.banned ? <UserCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                    </button>
+
                   <select
                     value={member.role}
                     onChange={(e) => handleUpdateRole(member.id, e.target.value)}
@@ -398,6 +422,7 @@ export default function Settings() {
                     <option value="member">MEMBER</option>
                     <option value="admin">ADMIN</option>
                   </select>
+                  </>
                 ) : (
                   <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border-2 border-amber-200 opacity-50 cursor-not-allowed">
                     {member.role} (You)

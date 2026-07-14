@@ -17,6 +17,8 @@ export default function Feed() {
   const [interactions, setInteractions] = useState({});
   const [voiceNotes, setVoiceNotes] = useState({});
   const [announcements, setAnnouncements] = useState([]);
+  const [tags, setTags] = useState([]);
+  const [activeTag, setActiveTag] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingArticleId, setEditingArticleId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -26,11 +28,12 @@ export default function Feed() {
   }, []);
 
   const fetchFeed = async () => {
-    const [artsRes, intRes, vnRes, annRes] = await Promise.all([
+    const [artsRes, intRes, vnRes, annRes, tagRes] = await Promise.all([
       supabase.from('articles').select('*, topic_tags(name, color)').order('posted_at', { ascending: false }),
       supabase.from('article_interactions').select('*').eq('user_id', profile.id),
       supabase.from('voice_notes').select('*').eq('user_id', profile.id),
-      supabase.from('announcements').select('*').order('created_at', { ascending: false })
+      supabase.from('announcements').select('*').order('created_at', { ascending: false }),
+      supabase.from('topic_tags').select('*').eq('archived', false).order('sort_order')
     ]);
     
     if (artsRes.data) setArticles(artsRes.data);
@@ -51,6 +54,7 @@ export default function Feed() {
       vnRes.data.forEach(v => vnMap[v.article_id] = v);
       setVoiceNotes(vnMap);
     }
+    if (tagRes.data) setTags(tagRes.data);
 
     setLoading(false);
   };
@@ -157,6 +161,33 @@ export default function Feed() {
         </div>
       </div>
 
+      {/* Domain filter */}
+      {tags.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar -mx-4 px-4">
+          <button
+            onClick={() => setActiveTag(null)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors btn-squish ${
+              activeTag === null ? 'bg-[var(--color-accent)] text-white' : 'bg-white text-[var(--color-text-secondary)] border border-[var(--color-border)]'
+            }`}
+          >
+            All
+          </button>
+          {tags.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTag(activeTag === t.id ? null : t.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors btn-squish border ${
+                activeTag === t.id ? 'text-white border-transparent' : 'bg-white text-[var(--color-text-secondary)] border-[var(--color-border)]'
+              }`}
+              style={activeTag === t.id ? { backgroundColor: t.color, borderColor: t.color } : {}}
+            >
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: activeTag === t.id ? '#fff' : t.color }} />
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Announcements */}
       {announcements.length > 0 && (
         <div className="space-y-3">
@@ -170,13 +201,15 @@ export default function Feed() {
         </div>
       )}
 
-      {articles.length === 0 ? (
+      {articles.filter(a => !activeTag || a.tag_id === activeTag).length === 0 ? (
         <div className="p-8 premium-card rounded-2xl text-center">
-          <p className="text-[var(--color-text-secondary)] font-bold">Koi article nahi hai, jao so jao! 😴</p>
+          <p className="text-[var(--color-text-secondary)] font-bold">
+            {activeTag ? 'Is domain mein koi article nahi hai.' : 'Koi article nahi hai, jao so jao! 😴'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {articles.map((article) => {
+          {articles.filter(a => !activeTag || a.tag_id === activeTag).map((article) => {
             const isMissed = isPast(new Date(article.deadline_at));
             const interaction = interactions[article.id];
             const voiceNote = voiceNotes[article.id];
