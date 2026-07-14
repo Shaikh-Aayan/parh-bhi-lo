@@ -44,13 +44,13 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================
--- 3) Leaderboard view (idempotent). Stats page reads this.
+-- 3) Leaderboard view (safe to re-run).
 --    SECURITY DEFINER so it bypasses RLS and shows everyone's
---    totals on the leaderboard. Skips if it already exists, so
---    re-running is safe.
+--    totals on the leaderboard.
 -- ============================================================
-CREATE VIEW IF NOT EXISTS public.user_stats_view
-  WITH (security_definer = true) AS
+DROP VIEW IF EXISTS public.user_stats_view;
+
+CREATE VIEW public.user_stats_view WITH (security_definer = true) AS
 SELECT
   p.id                                                    AS user_id,
   p.display_name,
@@ -67,5 +67,19 @@ GROUP BY p.id, p.display_name, p.role;
 
 GRANT SELECT ON public.user_stats_view TO authenticated, anon;
 
--- If the view already existed but is broken/out of date, force-recreate it:
--- DROP VIEW IF EXISTS public.user_stats_view;  -- (run this line first if needed)
+-- ============================================================
+-- 4) Realtime: chat_messages must emit change events, otherwise
+--    new DMs only appear after a page reload. This adds the table
+--    to the supabase_realtime publication (idempotent).
+-- ============================================================
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'chat_messages'
+  ) THEN
+    EXECUTE 'ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages';
+  END IF;
+END $$;

@@ -17,12 +17,16 @@ export default function Wall() {
   }, []);
 
   const fetchWall = async () => {
-    // Fetch ALL articles where deadline is passed (show even ones without voice notes so admin can record)
-    const { data: arts } = await supabase
+    // Members only see articles whose deadline has passed.
+    // Admins see ALL articles + every member's voice note immediately.
+    let query = supabase
       .from('articles')
-      .select('*, topic_tags(name, color), voice_notes(*, profiles(display_name))')
-      .lt('deadline_at', new Date().toISOString())
-      .order('deadline_at', { ascending: false });
+      .select('*, topic_tags(name, color), voice_notes(*, profiles(display_name))');
+    if (!isAdmin) {
+      query = query.lt('deadline_at', new Date().toISOString());
+    }
+
+    const { data: arts } = await query.order('deadline_at', { ascending: false });
     
     if (arts) {
       setArticles(arts);
@@ -75,7 +79,7 @@ export default function Wall() {
       </div>
 
       <p className="text-sm text-[var(--color-text-secondary)] font-medium">
-        Deadline guzar gayi. Ab suno sab ki awazein! 🔊
+        {isAdmin ? 'Admin view: sab articles aur members ki voice notes dikh rahe hain. 🎧' : 'Deadline guzar gayi. Ab suno sab ki awazein! 🔊'}
       </p>
 
       {articles.length === 0 ? (

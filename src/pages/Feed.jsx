@@ -9,6 +9,12 @@ import VoiceRecorder from '../components/VoiceRecorder';
 import VoicePlayer from '../components/VoicePlayer';
 import InstallPrompt from '../components/InstallPrompt';
 
+const AVATAR_COLORS = ['#6B7A3A', '#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#0EA5E9', '#10B981', '#EF4444', '#7C3AED', '#0D9488'];
+const initials = (name = '') =>
+  name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+const avatarColor = (id = '') =>
+  AVATAR_COLORS[[...id].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_COLORS.length];
+
 export default function Feed() {
   const { profile } = useAuth();
   const { addToast } = useToast();
@@ -18,6 +24,8 @@ export default function Feed() {
   const [voiceNotes, setVoiceNotes] = useState({});
   const [announcements, setAnnouncements] = useState([]);
   const [tags, setTags] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [readBy, setReadBy] = useState({}); // articleId -> [userIds that read]
   const [activeTag, setActiveTag] = useState(null);
   const [bounceId, setBounceId] = useState(null);
   const [ink, setInk] = useState(false);
@@ -54,12 +62,14 @@ export default function Feed() {
   }, [articles]);
 
   const fetchFeed = async () => {
-    const [artsRes, intRes, vnRes, annRes, tagRes] = await Promise.all([
+    const [artsRes, intRes, vnRes, annRes, tagRes, profRes, allIntRes] = await Promise.all([
       supabase.from('articles').select('*, topic_tags(name, color)').order('posted_at', { ascending: false }),
       supabase.from('article_interactions').select('*').eq('user_id', profile.id),
       supabase.from('voice_notes').select('*').eq('user_id', profile.id),
       supabase.from('announcements').select('*').order('created_at', { ascending: false }),
-      supabase.from('topic_tags').select('*').eq('archived', false).order('sort_order')
+      supabase.from('topic_tags').select('*').eq('archived', false).order('sort_order'),
+      supabase.from('profiles').select('id, display_name, role, banned').eq('banned', false),
+      supabase.from('article_interactions').select('article_id, user_id, is_read')
     ]);
     
     if (artsRes.data) setArticles(artsRes.data);
@@ -81,6 +91,14 @@ export default function Feed() {
       setVoiceNotes(vnMap);
     }
     if (tagRes.data) setTags(tagRes.data);
+    if (profRes.data) setMembers(profRes.data);
+    if (allIntRes.data) {
+      const rb = {};
+      allIntRes.data.forEach(i => {
+        if (i.is_read) (rb[i.article_id] ||= []).push(i.user_id);
+      });
+      setReadBy(rb);
+    }
 
     setLoading(false);
   };
@@ -332,6 +350,35 @@ export default function Feed() {
                       </p>
                     )}
                   </>
+                )}
+
+                {/* Per-member read status — who has read this article */}
+                {members.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap mt-1">
+                    <div className="flex -space-x-1.5">
+                      {members.slice(0, 8).map((m) => {
+                        const read = (readBy[article.id] || []).includes(m.id);
+                        return (
+                          <div
+                            key={m.id}
+                            title={`${m.display_name}${read ? ' ✓ read' : ' — not read'}`}
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ring-2 ${read ? 'ring-green-500' : 'ring-white opacity-50'}`}
+                            style={{ backgroundColor: avatarColor(m.id) }}
+                          >
+                            {initials(m.display_name)}
+                          </div>
+                        );
+                      })}
+                      {members.length > 8 && (
+                        <div className="w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-[9px] font-bold ring-2 ring-white">
+                          +{members.length - 8}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-bold text-[var(--color-text-muted)]">
+                      {(readBy[article.id] || []).length}/{members.length} read
+                    </span>
+                  </div>
                 )}
 
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-[var(--color-border)]">

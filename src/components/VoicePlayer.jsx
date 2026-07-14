@@ -1,24 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Play, Pause, SmilePlus } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 
 export default function VoicePlayer({ voiceNote }) {
   const [playing, setPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [reactions, setReactions] = useState([]);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef(null);
 
   useEffect(() => {
     const { data } = supabase.storage.from('voice-notes').getPublicUrl(voiceNote.storage_path);
     setAudioUrl(data.publicUrl);
-    fetchReactions();
   }, [voiceNote]);
-
-  const fetchReactions = async () => {
-    const { data } = await supabase.from('voice_reactions').select('*').eq('voice_note_id', voiceNote.id);
-    if (data) setReactions(data);
-  };
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -87,17 +80,7 @@ export default function VoicePlayer({ voiceNote }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 relative z-10 pl-1">
-        {['🔥', '👏', '😂', '🤔'].map(emoji => {
-          const count = reactions.filter(r => r.emoji === emoji).length;
-          return (
-            <button key={emoji} className="px-2.5 py-1 rounded-full bg-white border border-[var(--color-border)] shadow-sm hover:border-[var(--color-accent)] text-xs transition-colors flex items-center gap-1 btn-squish">
-              <span>{emoji}</span>
-              {count > 0 && <span className="font-bold text-[var(--color-text-secondary)]">{count}</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Reactions removed */}
     </div>
   );
 }

@@ -1,11 +1,27 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { BookOpen, BarChart2, Settings, User, Radio, MessageCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export default function Layout() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
   const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    const fetchUnread = async () => {
+      const { count } = await supabase
+        .from('article_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .eq('is_read', false);
+      if (count !== null) setUnreadCount(count);
+    };
+    fetchUnread();
+  }, [profile?.id]);
 
   return (
     <div className="pb-24"> {/* Padding for bottom bar */}
@@ -24,7 +40,14 @@ export default function Layout() {
               `flex flex-col items-center gap-1 transition-colors ${isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'}`
             }
           >
-            <BookOpen className="w-6 h-6" />
+            <div className="relative">
+              <BookOpen className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 flex items-center justify-center bg-[var(--color-danger)] text-white text-[9px] font-bold rounded-full px-1">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
             <span className="text-[10px] font-bold uppercase tracking-wider">Feed</span>
           </NavLink>
 
