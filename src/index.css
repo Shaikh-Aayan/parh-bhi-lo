@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  /* PARH BHI LO! - Premium Olive/Renaissance Theme */
+  --color-bg-primary: #FDFBF7; /* Parchment white */
+  --color-bg-secondary: #F4F1EA; /* Slightly darker parchment */
+  --color-bg-gradient: linear-gradient(135deg, #FDFBF7 0%, #F4F1EA 100%);
+  
+  /* Olive Accents */
+  --color-accent: #6B7A3A;
+  --color-accent-light: #EEF0E1;
+  --color-accent-hover: #545F2E;
+  
+  /* Deep Rich Text */
+  --color-text-primary: #2C2F24;
+  --color-text-secondary: #5A5D50;
+  --color-text-muted: #8C8F81;
+  
+  /* Borders and Glass */
+  --color-border: #E5E2D9;
+  --color-glass-bg: rgba(253, 251, 247, 0.75);
+  
+  /* Semantics */
+  --color-danger: #DC2626;
+  --color-warning: #D97706;
+  --color-success: #16A34A;
+}
+
+body {
+  font-family: 'Quicksand', sans-serif;
+  background: var(--color-bg-gradient);
+  background-attachment: fixed;
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='%236B7A3A' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round' opacity='0.12'%3E%3C!-- Book --%3E%3Cpath d='M30 40 h20 v25 h-20 z'/%3E%3Cpath d='M50 40 h20 v25 h-20 z'/%3E%3Cpath d='M30 65 q20 10, 40 0'/%3E%3C!-- Mic --%3E%3Cpath d='M140 130 v15 M135 150 h10 M130 135 q10 10, 20 0 M135 115 h10 v15 h-10 z'/%3E%3C!-- Sparkles --%3E%3Cpath d='M160 40 l3 -10 l3 10 l10 3 l-10 3 l-3 10 l-3 -10 l-10 -3 z'/%3E%3C!-- Squiggle --%3E%3Cpath d='M30 150 q10 -15, 20 0 t20 0 t20 0'/%3E%3C!-- Dots --%3E%3Ccircle cx='100' cy='80' r='1.5' fill='%236B7A3A'/%3E%3Ccircle cx='180' cy='180' r='1.5' fill='%236B7A3A'/%3E%3Ccircle cx='20' cy='100' r='1.5' fill='%236B7A3A'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Premium Component Shadows & Transitions */
+.premium-card {
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1; /* Stay above doodles */
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+}
+
+.btn-squish {
+  transition: all 0.15s ease-in-out;
+}
+.btn-squish:active {
+  transform: scale(0.96);
+}
+
+.glass-nav {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03);
+}
+
+/* Tailwind v4 config overrides can go here if needed, but CSS variables handle most of it */
