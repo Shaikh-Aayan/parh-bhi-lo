@@ -97,33 +97,44 @@ export default function Chat() {
   // Realtime
   useEffect(() => {
     if (!me) return;
-    const channel = supabase
-      .channel('chat-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, async (payload) => {
-        const m = payload.new;
-        const isGlobal = m.receiver_id === null;
-        if (!isGlobal && m.sender_id !== me && m.receiver_id !== me) return;
+    let channel;
+    try {
+      channel = supabase
+        .channel('chat-realtime')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, async (payload) => {
+          const m = payload.new;
+          const isGlobal = m.receiver_id === null;
+          if (!isGlobal && m.sender_id !== me && m.receiver_id !== me) return;
 
-        const { data: senderInfo } = await supabase
-          .from('profiles')
-          .select('display_name, role, banned')
-          .eq('id', m.sender_id)
-          .single();
+          const { data: senderInfo } = await supabase
+            .from('profiles')
+            .select('display_name, role, banned')
+            .eq('id', m.sender_id)
+            .single();
 
-        setAllMessages((prev) => {
-          const cleaned = prev.filter(
-            (x) => !(x._temp && x.sender_id === m.sender_id && x.content === m.content)
-          );
-          if (cleaned.some((x) => x.id === m.id)) return cleaned;
-          return [...cleaned, { ...m, sender: senderInfo }];
+          setAllMessages((prev) => {
+            const cleaned = prev.filter(
+              (x) => !(x._temp && x.sender_id === m.sender_id && x.content === m.content)
+            );
+            if (cleaned.some((x) => x.id === m.id)) return cleaned;
+            return [...cleaned, { ...m, sender: senderInfo }];
+          });
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
+          setAllMessages((prev) => prev.filter((x) => x.id !== payload.old.id));
+        })
+        .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            console.warn('Chat realtime unavailable — messages will load on refresh.');
+          }
         });
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (payload) => {
-        setAllMessages((prev) => prev.filter((x) => x.id !== payload.old.id));
-      })
-      .subscribe();
+    } catch (error) {
+      console.warn('Realtime init failed:', error);
+    }
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
   }, [me]);
 
   useEffect(() => {
