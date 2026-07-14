@@ -55,17 +55,35 @@ export default function Chat() {
     [profiles]
   );
 
-  const fetchInitial = async () => {
-    const [{ data: profs }, { data: msgs }] = await Promise.all([
-      supabase.from('profiles').select('*').order('display_name'),
-      supabase
-        .from('chat_messages')
-        .select('*, sender:profiles!sender_id(display_name, role, banned)')
-        .or(`receiver_id.is.null, sender_id.eq.${me}, receiver_id.eq.${me}`)
-        .order('created_at', { ascending: true }),
-    ]);
-    if (profs) setProfiles(profs);
-    if (msgs) setAllMessages(msgs);
+  const fetchInitial = async (retries = 2) => {
+    try {
+      const [{ data: profs }, { data: msgs }] = await Promise.all([
+        supabase.from('profiles').select('*').order('display_name'),
+        supabase
+          .from('chat_messages')
+          .select('*')
+          .or(`receiver_id.is.null, sender_id.eq.${me}, receiver_id.eq.${me}`)
+          .order('created_at', { ascending: true }),
+      ]);
+
+      if (profs) setProfiles(profs);
+
+      if (msgs) {
+        const profileMap = new Map((profs || []).map(p => [p.id, p]));
+        const enriched = msgs.map(m => ({
+          ...m,
+          sender: m.sender_id ? profileMap.get(m.sender_id) : null
+        }));
+        setAllMessages(enriched);
+      }
+    } catch (error) {
+      console.error('fetchInitial error:', error);
+      if (retries > 0) {
+        await new Promise(r => setTimeout(r, 600));
+        return fetchInitial(retries - 1);
+      }
+      addToast('Chat load failed. Please pull down to refresh.', 'error');
+    }
     setLoading(false);
   };
 

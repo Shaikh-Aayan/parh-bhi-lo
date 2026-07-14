@@ -44,28 +44,42 @@ WHERE NOT EXISTS (
 );
 
 -- ============================================================
--- 3) Leaderboard view (safe to re-run).
+-- 3) Leaderboard function (safe to re-run).
 --    SECURITY DEFINER so it bypasses RLS and shows everyone's
 --    totals on the leaderboard.
 -- ============================================================
-DROP VIEW IF EXISTS public.user_stats_view;
+DROP FUNCTION IF EXISTS public.get_leaderboard();
 
-CREATE VIEW public.user_stats_view WITH (security_definer = true) AS
-SELECT
-  p.id                                                    AS user_id,
-  p.display_name,
-  p.role,
-  COALESCE(SUM(CASE WHEN ai.is_read THEN ai.points_earned ELSE 0 END), 0)
-    + COALESCE(SUM(vn.points_earned), 0)                  AS total_points,
-  COUNT(ai.id) FILTER (WHERE ai.is_read)                 AS total_articles_read,
-  COUNT(vn.id)                                            AS total_voice_notes,
-  COUNT(ai.id) FILTER (WHERE NOT ai.is_read)              AS total_missed
-FROM public.profiles p
-LEFT JOIN public.article_interactions ai ON ai.user_id = p.id
-LEFT JOIN public.voice_notes vn           ON vn.user_id = p.id
-GROUP BY p.id, p.display_name, p.role;
+CREATE OR REPLACE FUNCTION public.get_leaderboard()
+RETURNS TABLE (
+  user_id uuid,
+  display_name text,
+  role text,
+  total_points bigint,
+  total_articles_read bigint,
+  total_voice_notes bigint,
+  total_missed bigint
+)
+SECURITY DEFINER
+LANGUAGE sql
+AS $$
+  SELECT
+    p.id,
+    p.display_name,
+    p.role,
+    COALESCE(SUM(CASE WHEN ai.is_read THEN ai.points_earned ELSE 0 END), 0)
+      + COALESCE(SUM(vn.points_earned), 0)                  AS total_points,
+    COUNT(ai.id) FILTER (WHERE ai.is_read)                 AS total_articles_read,
+    COUNT(vn.id)                                            AS total_voice_notes,
+    COUNT(ai.id) FILTER (WHERE NOT ai.is_read)              AS total_missed
+  FROM public.profiles p
+  LEFT JOIN public.article_interactions ai ON ai.user_id = p.id
+  LEFT JOIN public.voice_notes vn           ON vn.user_id = p.id
+  GROUP BY p.id, p.display_name, p.role
+  ORDER BY total_points DESC;
+$$;
 
-GRANT SELECT ON public.user_stats_view TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION public.get_leaderboard() TO authenticated, anon;
 
 -- ============================================================
 -- 4) Realtime: chat_messages must emit change events, otherwise

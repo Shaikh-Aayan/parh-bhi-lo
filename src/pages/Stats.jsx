@@ -16,6 +16,10 @@ export default function Stats() {
   const [todayArticles, setTodayArticles] = useState([]);
   const [todayInteractions, setTodayInteractions] = useState([]);
   const [members, setMembers] = useState([]);
+
+  // Streak / Laziness
+  const [myInteractions, setMyInteractions] = useState([]);
+
   const [trophySeen, setTrophySeen] = useState(() => {
     try { return localStorage.getItem('pbl_trophy_seen') === '1'; } catch { return false; }
   });
@@ -36,7 +40,7 @@ export default function Stats() {
 
   const fetchStats = async () => {
     const [statsRes, setRes] = await Promise.all([
-      supabase.from('user_stats_view').select('*').order('total_points', { ascending: false }),
+      supabase.rpc('get_leaderboard'),
       supabase.from('app_settings').select('*').eq('id', 1).single()
     ]);
     
@@ -55,6 +59,16 @@ export default function Stats() {
       setMembers(profs.data || []);
     }
 
+    // Fetch current user's interactions for streak/laziness
+    if (profile?.id) {
+      const { data: myInts } = await supabase
+        .from('article_interactions')
+        .select('read_at, is_read')
+        .eq('user_id', profile.id)
+        .order('read_at', { ascending: false });
+      if (myInts) setMyInteractions(myInts);
+    }
+
     setLoading(false);
   };
 
@@ -66,6 +80,42 @@ export default function Stats() {
 
   const bannedIds = useMemo(() => new Set(members.filter(m => m.banned).map(m => m.id)), [members]);
   const myStats = stats.find(s => s.user_id === profile.id);
+
+  const computeStreak = useCallback((interactions) => {
+    if (!interactions || interactions.length === 0) return 0;
+    const readDates = [...new Set(
+      interactions
+        .filter(i => i.is_read && i.read_at)
+        .map(i => new Date(i.read_at).toDateString())
+    )].sort((a, b) => new Date(b) - new Date(a));
+
+    if (readDates.length === 0) return 0;
+
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    if (readDates[0] !== today && readDates[0] !== yesterday) return 0;
+
+    let streak = 1;
+    let current = new Date(readDates[0]);
+    for (let i = 1; i < readDates.length; i++) {
+      const expected = new Date(current);
+      expected.setDate(expected.getDate() - 1);
+      if (readDates[i] === expected.toDateString()) {
+        streak++;
+        current = expected;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, []);
+
+  const streak = useMemo(() => computeStreak(myInteractions), [myInteractions, computeStreak]);
+  const totalRead = myStats?.total_articles_read || 0;
+  const totalMissed = myStats?.total_missed || 0;
+  const laziness = totalRead + totalMissed > 0
+    ? Math.round((totalMissed / (totalRead + totalMissed)) * 100)
+    : 0;
 
   if (loading) {
     return (
@@ -178,7 +228,6 @@ export default function Stats() {
           <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Streak</h2>
           <div className="text-2xl font-bold text-[var(--color-text-primary)] mt-1">
             {(() => {
-              const streak = 0; // wire to real streak once computed (Phase 6)
               const milestone = [7, 30, 100].includes(streak);
               return (
                 <span className={milestone ? 'gold-glow' : ''}>
@@ -188,7 +237,7 @@ export default function Stats() {
             })()}
           </div>
           <p className="text-[10px] text-[var(--color-text-secondary)] mt-1 leading-tight">
-            Computed dynamically <br/> in Phase 6 cron
+            Consecutive days with reads
           </p>
         </div>
 
@@ -197,10 +246,10 @@ export default function Stats() {
           <Frown className="w-8 h-8 text-[var(--color-danger)] mb-2 relative z-10" />
           <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider relative z-10">Laziness Index</h2>
           <div className="text-2xl font-bold text-[var(--color-danger)] mt-1 relative z-10">
-            {(myStats?.total_missed || 0) * 10}%
+            {laziness}%
           </div>
           <p className="text-[10px] text-[var(--color-text-secondary)] mt-1 leading-tight relative z-10">
-            {myStats?.total_missed || 0} missed articles
+            {totalMissed} missed articles
           </p>
         </div>
       </div>
