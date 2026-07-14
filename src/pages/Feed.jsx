@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import { useToast } from '../lib/ToastContext';
@@ -19,6 +19,8 @@ export default function Feed() {
   const [announcements, setAnnouncements] = useState([]);
   const [tags, setTags] = useState([]);
   const [activeTag, setActiveTag] = useState(null);
+  const [bounceId, setBounceId] = useState(null);
+  const [ink, setInk] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editingArticleId, setEditingArticleId] = useState(null);
   const [editFormData, setEditFormData] = useState({});
@@ -26,6 +28,30 @@ export default function Feed() {
   useEffect(() => {
     fetchFeed();
   }, []);
+
+  // First app open of the day: one-time olive ink-wash behind the logo (< 1s)
+  useEffect(() => {
+    const today = new Date().toDateString();
+    try {
+      if (localStorage.getItem('pbl_first_open_day') !== today) {
+        localStorage.setItem('pbl_first_open_day', today);
+        setInk(true);
+        const t = setTimeout(() => setInk(false), 1000);
+        return () => clearTimeout(t);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  // First article of each day (for the drop-cap flourish)
+  const firstOfDayIds = useMemo(() => {
+    const seen = new Set();
+    const set = new Set();
+    articles.forEach((a) => {
+      const d = new Date(a.posted_at).toDateString();
+      if (!seen.has(d)) { seen.add(d); set.add(a.id); }
+    });
+    return set;
+  }, [articles]);
 
   const fetchFeed = async () => {
     const [artsRes, intRes, vnRes, annRes, tagRes] = await Promise.all([
@@ -72,6 +98,7 @@ export default function Feed() {
     
     if (data) {
       setInteractions(prev => ({ ...prev, [article.id]: data }));
+      setBounceId(article.id);
       addToast(`Zabardast! Article parh liya! (+${article.points_for_read} pts)`, 'success');
     } else {
       console.error(error);
@@ -153,11 +180,12 @@ export default function Feed() {
     <div className="space-y-6 pb-24 relative min-h-screen">
       <InstallPrompt />
       <div className="flex items-center justify-between sticky top-0 glass-nav -mx-4 px-4 pt-4 pb-2 z-10">
-        <div>
-          <h1 className="text-3xl font-black text-[var(--color-accent)] tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
+        <div className="relative overflow-hidden">
+          <h1 className="relative z-10 text-3xl font-black text-[var(--color-accent)] tracking-tight" style={{ fontFamily: 'Outfit, sans-serif' }}>
             PARH BHI LO!
           </h1>
-          <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Today's Feed</p>
+          {ink && <div className="ink-wash" />}
+          <p className="relative z-10 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Today's Feed</p>
         </div>
       </div>
 
@@ -209,14 +237,19 @@ export default function Feed() {
         </div>
       ) : (
         <div className="space-y-4">
-          {articles.filter(a => !activeTag || a.tag_id === activeTag).map((article) => {
+          {articles.filter(a => !activeTag || a.tag_id === activeTag).map((article, index) => {
             const isMissed = isPast(new Date(article.deadline_at));
             const interaction = interactions[article.id];
             const voiceNote = voiceNotes[article.id];
             const isRead = interaction?.is_read;
 
             return (
-              <div key={article.id} className="premium-card p-5 rounded-2xl relative overflow-hidden group">
+              <div
+                key={article.id}
+                className={`premium-card p-5 rounded-2xl relative overflow-hidden group card-enter ${bounceId === article.id ? 'read-bounce' : ''}`}
+                onAnimationEnd={() => bounceId === article.id && setBounceId(null)}
+                style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+              >
                 <div 
                   className="absolute left-0 top-0 bottom-0 w-1.5" 
                   style={{ backgroundColor: article.is_mandatory ? 'var(--color-danger)' : (article.topic_tags?.color || 'var(--color-border)') }}
@@ -289,7 +322,7 @@ export default function Feed() {
                   </div>
                 ) : (
                   <>
-                    <h2 className={`text-lg font-bold leading-snug mb-1 ${isRead ? 'text-[var(--color-text-muted)] line-through decoration-2' : 'text-[var(--color-text-primary)]'}`}>
+                    <h2 className={`text-lg font-bold leading-snug mb-1 ${isRead ? 'text-[var(--color-text-muted)] line-through decoration-2' : 'text-[var(--color-text-primary)]'} ${firstOfDayIds.has(article.id) ? 'drop-cap' : ''}`}>
                       {article.title}
                     </h2>
                     

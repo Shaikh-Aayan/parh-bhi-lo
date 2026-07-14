@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { Loader2, Save, Plus, Trash2, ShieldAlert, BellRing, Ban, UserCheck } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, ShieldAlert, BellRing, Ban, UserCheck, Check } from 'lucide-react';
 
 export default function Settings() {
   const { profile } = useAuth();
@@ -14,6 +14,7 @@ export default function Settings() {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('rules');
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#6B7A3A');
@@ -48,9 +49,14 @@ export default function Settings() {
 
   const saveSettings = async () => {
     setSaving(true);
-    await supabase.from('app_settings').update(settings).eq('id', 1);
+    const { error } = await supabase.from('app_settings').update(settings).eq('id', 1);
     setSaving(false);
-    alert('Settings saved! ✅');
+    if (error) {
+      addToast('Settings save fail ho gayi.', 'error');
+      return;
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
   };
 
   const handleAddTag = async () => {
@@ -227,14 +233,14 @@ export default function Settings() {
           <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Control Everything</p>
         </div>
         {activeTab === 'rules' && (
-          <button
-            onClick={saveSettings}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-white font-bold rounded-xl text-sm hover:bg-[var(--color-accent-hover)] transition-colors btn-squish"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
-          </button>
+            <button
+              onClick={saveSettings}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--color-accent)] text-white font-bold rounded-xl text-sm hover:bg-[var(--color-accent-hover)] transition-colors btn-squish"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
+            </button>
         )}
       </div>
 

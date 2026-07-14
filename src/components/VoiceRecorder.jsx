@@ -103,7 +103,7 @@ export default function VoiceRecorder({ article, onRecorded }) {
         onClick={recording ? stopRecording : startRecording}
         className={`flex items-center justify-center w-12 h-12 rounded-full transition-all btn-squish flex-shrink-0 ${
           recording 
-            ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 relative' 
+            ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 relative recording-glow' 
             : 'bg-[var(--color-accent-light)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white'
         }`}
       >

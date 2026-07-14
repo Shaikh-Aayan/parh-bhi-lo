@@ -1,15 +1,18 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { BookOpen, BarChart2, Settings, User, Radio, MessageCircle } from 'lucide-react';
 
 export default function Layout() {
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'admin';
+  const location = useLocation();
 
   return (
     <div className="pb-24"> {/* Padding for bottom bar */}
       <main className="max-w-md mx-auto p-4 min-h-screen">
-        <Outlet />
+        <div key={location.pathname} className="tab-fade">
+          <Outlet />
+        </div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50">

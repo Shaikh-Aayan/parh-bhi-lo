@@ -16,10 +16,23 @@ export default function Stats() {
   const [todayArticles, setTodayArticles] = useState([]);
   const [todayInteractions, setTodayInteractions] = useState([]);
   const [members, setMembers] = useState([]);
+  const [trophySeen, setTrophySeen] = useState(() => {
+    try { return localStorage.getItem('pbl_trophy_seen') === '1'; } catch { return false; }
+  });
 
   useEffect(() => {
     fetchStats();
   }, []);
+
+  // Trophy shimmer on the #1 card — once, first time the leaderboard is viewed
+  useEffect(() => {
+    if (trophySeen) return;
+    const t = setTimeout(() => {
+      setTrophySeen(true);
+      try { localStorage.setItem('pbl_trophy_seen', '1'); } catch { /* ignore */ }
+    }, 1300);
+    return () => clearTimeout(t);
+  }, [trophySeen]);
 
   const fetchStats = async () => {
     const [statsRes, setRes] = await Promise.all([
@@ -72,15 +85,15 @@ export default function Stats() {
       </div>
 
       <div className="space-y-3">
-        {stats.filter(s => !bannedIds.has(s.user_id)).map((userStat, index) => (
-          <div 
-            key={userStat.user_id} 
-            className={`flex items-center p-4 rounded-2xl border premium-card ${
-              userStat.user_id === profile.id 
-                ? 'bg-[var(--color-accent-light)] border-[var(--color-accent)]' 
-                : ''
-            }`}
-          >
+          {stats.filter(s => !bannedIds.has(s.user_id)).map((userStat, index) => (
+            <div 
+              key={userStat.user_id} 
+              className={`flex items-center p-4 rounded-2xl border premium-card ${index === 0 && !trophySeen ? ' shimmer' : ''} ${
+                userStat.user_id === profile.id 
+                  ? 'bg-[var(--color-accent-light)] border-[var(--color-accent)]' 
+                  : ''
+              }`}
+            >
             <div className="w-8 font-bold text-lg text-[var(--color-text-muted)]">
               #{index + 1}
             </div>
@@ -163,7 +176,15 @@ export default function Stats() {
           <Flame className="w-8 h-8 text-[var(--color-warning)] mb-2" />
           <h2 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Streak</h2>
           <div className="text-2xl font-bold text-[var(--color-text-primary)] mt-1">
-            0 <span className="text-sm">days</span>
+            {(() => {
+              const streak = 0; // wire to real streak once computed (Phase 6)
+              const milestone = [7, 30, 100].includes(streak);
+              return (
+                <span className={milestone ? 'gold-glow' : ''}>
+                  {streak} <span className="text-sm">days</span>
+                </span>
+              );
+            })()}
           </div>
           <p className="text-[10px] text-[var(--color-text-secondary)] mt-1 leading-tight">
             Computed dynamically <br/> in Phase 6 cron
