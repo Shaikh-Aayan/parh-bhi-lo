@@ -34,7 +34,10 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: SPA fallback (client-side routing on 404)
-        run: cp dist/index.html dist/404.html
+        run: |
+          if [ ! -f dist/404.html ]; then
+            cp dist/index.html dist/404.html
+          fi
 
       - uses: actions/upload-pages-artifact@v3
         with:

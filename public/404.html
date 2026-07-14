@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      // SPA fallback for GitHub Pages: any missing file under /parh-bhi-lo/
+      // gets this 404.html, which hands control back to index.html so the
+      // client-side router can render the correct page.
+      const path = window.location.pathname;
+      const base = '/parh-bhi-lo';
+      if (path.startsWith(base) && path !== base + '/' && !path.endsWith('.html')) {
+        window.location.replace(base + '/');
+      }
+    </script>
+  </head>
+  <body></body>
+</html>
