@@ -1,6 +1,6 @@
 // Service Worker for PARH BHI LO! Push Notifications
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
   self.skipWaiting();
 });
 
@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       data = event.data.json();
-    } catch (e) {
+    } catch {
       data.body = event.data.text();
     }
   }
@@ -26,7 +26,7 @@ self.addEventListener('push', (event) => {
     badge: 'pwa-192x192.png',
     vibrate: [100, 50, 100],
     data: {
-      url: data.url || '/'
+      url: data.url || '/parh-bhi-lo/'
     },
     actions: [
       { action: 'open', title: 'Kholein' },
@@ -45,7 +45,7 @@ self.addEventListener('notificationclick', (event) => {
   
   if (event.action === 'dismiss') return;
 
-  const targetUrl = event.notification.data?.url || '/';
+  const targetUrl = event.notification.data?.url || '/parh-bhi-lo/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

@@ -62,6 +62,12 @@ export default function PostArticle() {
     e.preventDefault();
     setSubmitting(true);
 
+    if (!tagId) {
+      addToast('Pehle koi domain/tag select karo.', 'error');
+      setSubmitting(false);
+      return;
+    }
+
     const { error } = await supabase.from('articles').insert([{
       posted_by: profile.id,
       title,
@@ -83,7 +89,7 @@ export default function PostArticle() {
       navigate('/');
     } else {
       console.error(error);
-      alert('Failed to post article');
+      addToast('Failed to post article', 'error');
     }
   };
 

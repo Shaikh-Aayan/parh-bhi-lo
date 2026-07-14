@@ -13,7 +13,7 @@ import Wall from './pages/Wall';
 import Chat from './pages/Chat';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   
   if (loading) {
     return (
@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children }) => {
     );
   }
   
-  if (!user) {
+  if (!user || !profile) {
     return <Navigate to="/login" replace />;
   }
   

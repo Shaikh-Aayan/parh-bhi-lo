@@ -34,8 +34,8 @@ export default function Feed() {
   const [editFormData, setEditFormData] = useState({});
 
   useEffect(() => {
-    fetchFeed();
-  }, []);
+    if (profile?.id) fetchFeed();
+  }, [profile?.id]);
 
   // First app open of the day: one-time olive ink-wash behind the logo (< 1s)
   useEffect(() => {

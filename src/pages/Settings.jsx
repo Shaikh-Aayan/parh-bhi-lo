@@ -115,8 +115,9 @@ export default function Settings() {
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', memberId);
     if (!error) {
       setMembers(members.map(m => m.id === memberId ? { ...m, role: newRole } : m));
+      addToast(`Role updated to ${newRole}`, 'success');
     } else {
-      alert('Failed to update role');
+      addToast('Failed to update role', 'error');
     }
   };
 
@@ -127,7 +128,7 @@ export default function Settings() {
     }
     if ('serviceWorker' in navigator) {
       try {
-        await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.register('/parh-bhi-lo/sw.js');
       } catch (err) {
         console.error('SW registration failed:', err);
       }

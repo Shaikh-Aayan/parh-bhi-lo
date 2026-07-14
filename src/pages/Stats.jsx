@@ -25,8 +25,8 @@ export default function Stats() {
   });
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    if (profile?.id) fetchStats();
+  }, [profile?.id]);
 
   // Trophy shimmer on the #1 card — once, first time the leaderboard is viewed
   useEffect(() => {

@@ -79,7 +79,7 @@ export default function Login() {
           display_name: displayName,
           role: 'member'
         }, { onConflict: 'id' });
-      } catch (_) {
+      } catch {
         // Trigger already handled it — safe to ignore
       }
 

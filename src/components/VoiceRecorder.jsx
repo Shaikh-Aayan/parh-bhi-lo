@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
-import { Mic, Square, Loader2, UploadCloud } from 'lucide-react';
+import { Mic, Square, Loader2 } from 'lucide-react';
 
 export default function VoiceRecorder({ article, onRecorded }) {
   const { profile } = useAuth();
