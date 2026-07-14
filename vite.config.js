@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/parh-bhi-lo/',    // <-- ADD THIS LINE
+  base: '/parh-bhi-lo/',
   plugins: [
     react(),
     tailwindcss()
