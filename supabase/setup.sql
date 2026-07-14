@@ -42,3 +42,30 @@ FROM (VALUES
 WHERE NOT EXISTS (
   SELECT 1 FROM public.topic_tags t WHERE t.name = v.name
 );
+
+-- ============================================================
+-- 3) Leaderboard view (idempotent). Stats page reads this.
+--    SECURITY DEFINER so it bypasses RLS and shows everyone's
+--    totals on the leaderboard. Skips if it already exists, so
+--    re-running is safe.
+-- ============================================================
+CREATE VIEW IF NOT EXISTS public.user_stats_view
+  WITH (security_definer = true) AS
+SELECT
+  p.id                                                    AS user_id,
+  p.display_name,
+  p.role,
+  COALESCE(SUM(CASE WHEN ai.is_read THEN ai.points_earned ELSE 0 END), 0)
+    + COALESCE(SUM(vn.points_earned), 0)                  AS total_points,
+  COUNT(ai.id) FILTER (WHERE ai.is_read)                 AS total_articles_read,
+  COUNT(vn.id)                                            AS total_voice_notes,
+  COUNT(ai.id) FILTER (WHERE NOT ai.is_read)              AS total_missed
+FROM public.profiles p
+LEFT JOIN public.article_interactions ai ON ai.user_id = p.id
+LEFT JOIN public.voice_notes vn           ON vn.user_id = p.id
+GROUP BY p.id, p.display_name, p.role;
+
+GRANT SELECT ON public.user_stats_view TO authenticated, anon;
+
+-- If the view already existed but is broken/out of date, force-recreate it:
+-- DROP VIEW IF EXISTS public.user_stats_view;  -- (run this line first if needed)

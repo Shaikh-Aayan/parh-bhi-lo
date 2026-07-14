@@ -65,6 +65,7 @@ export default function Stats() {
   };
 
   const bannedIds = useMemo(() => new Set(members.filter(m => m.banned).map(m => m.id)), [members]);
+  const myStats = stats.find(s => s.user_id === profile.id);
 
   if (loading) {
     return (
