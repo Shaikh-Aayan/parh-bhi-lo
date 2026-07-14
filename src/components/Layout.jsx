@@ -1,7 +1,7 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { BookOpen, BarChart2, Settings, User, Radio, MessageCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function Layout() {
