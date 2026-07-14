@@ -22,8 +22,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/pwa-192x192.png',
-    badge: '/pwa-192x192.png',
+    icon: 'favicon.svg',
+    badge: 'favicon.svg',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/'
