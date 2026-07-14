@@ -1,17 +1,28 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import { useToast } from '../lib/ToastContext';
 import { Mic, Square, Loader2 } from 'lucide-react';
 
 export default function VoiceRecorder({ article, onRecorded }) {
   const { profile } = useAuth();
+  const { addToast } = useToast();
   const [recording, setRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [uploading, setUploading] = useState(false);
-  
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -25,14 +36,16 @@ export default function VoiceRecorder({ article, onRecorded }) {
       };
 
       mediaRecorder.onstop = handleStop;
-      
+
       mediaRecorder.start();
       setRecording(true);
       setDuration(0);
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      timerRef.current = setInterval(() => {
+        if (mountedRef.current) setDuration(d => d + 1);
+      }, 1000);
     } catch (err) {
       console.error('Error accessing microphone:', err);
-      alert('Microphone access denied or not available.');
+      addToast('Microphone access denied or not available.', 'error');
     }
   };
 
@@ -46,20 +59,21 @@ export default function VoiceRecorder({ article, onRecorded }) {
   };
 
   const handleStop = async () => {
+    if (!mountedRef.current) return;
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
     setUploading(true);
 
     const fileName = `${profile.id}/${article.id}-${Date.now()}.webm`;
+    let storagePath = null;
 
     try {
-      // 1. Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('voice-notes')
         .upload(fileName, audioBlob, { contentType: 'audio/webm' });
 
       if (uploadError) throw uploadError;
+      storagePath = fileName;
 
-      // 2. Save to database
       const { data, error: dbError } = await supabase
         .from('voice_notes')
         .insert([{
@@ -73,13 +87,19 @@ export default function VoiceRecorder({ article, onRecorded }) {
         .single();
 
       if (dbError) throw dbError;
-      
-      if (onRecorded) onRecorded(data);
+
+      if (onRecorded && mountedRef.current) onRecorded(data);
     } catch (err) {
       console.error('Upload failed:', err);
-      alert('Failed to save voice note.');
+      // Clean up orphaned storage file if we uploaded but DB insert failed
+      if (storagePath) {
+        await supabase.storage.from('voice-notes').remove([storagePath]);
+      }
+      if (mountedRef.current) {
+        addToast('Failed to save voice note.', 'error');
+      }
     } finally {
-      setUploading(false);
+      if (mountedRef.current) setUploading(false);
     }
   };
 
@@ -99,11 +119,11 @@ export default function VoiceRecorder({ article, onRecorded }) {
 
   return (
     <div className="flex items-center gap-3 bg-[var(--color-bg-primary)] p-2 rounded-2xl border border-[var(--color-border)] shadow-sm">
-      <button 
+      <button
         onClick={recording ? stopRecording : startRecording}
         className={`flex items-center justify-center w-12 h-12 rounded-full transition-all btn-squish flex-shrink-0 ${
-          recording 
-            ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 relative recording-glow' 
+          recording
+            ? 'bg-red-500 text-white shadow-lg shadow-red-500/40 relative recording-glow'
             : 'bg-[var(--color-accent-light)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white'
         }`}
       >
@@ -116,7 +136,7 @@ export default function VoiceRecorder({ article, onRecorded }) {
           <Mic className="w-5 h-5" />
         )}
       </button>
-      
+
       <div className="flex-1 flex items-center justify-between pr-4">
         {recording ? (
           <div className="flex items-center gap-2">

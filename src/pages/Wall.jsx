@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
+import { useToast } from '../lib/ToastContext';
 import { Loader2, Radio, Trash2 } from 'lucide-react';
 import VoiceRecorder from '../components/VoiceRecorder';
 import VoicePlayer from '../components/VoicePlayer';
@@ -8,6 +9,7 @@ import { format } from 'date-fns';
 
 export default function Wall() {
   const { profile } = useAuth();
+  const { addToast } = useToast();
   const isAdmin = profile?.role === 'admin';
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +49,7 @@ export default function Wall() {
         return art;
       }));
     } else {
-      alert('Failed to delete voice note.');
+      addToast('Failed to delete voice note.', 'error');
       console.error(error);
     }
   };

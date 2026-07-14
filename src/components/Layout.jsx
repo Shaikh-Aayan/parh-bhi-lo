@@ -10,18 +10,29 @@ export default function Layout() {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
+  const fetchUnread = useCallback(async () => {
     if (!profile?.id) return;
-    const fetchUnread = async () => {
+    try {
       const { count } = await supabase
         .from('article_interactions')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile.id)
         .eq('is_read', false);
       if (count !== null) setUnreadCount(count);
-    };
-    fetchUnread();
+    } catch (err) {
+      console.error('fetchUnread error:', err);
+    }
   }, [profile?.id]);
+
+  useEffect(() => {
+    fetchUnread();
+  }, [fetchUnread]);
+
+  useEffect(() => {
+    const onFocus = () => fetchUnread();
+    window.addEventListener('visibilitychange', onFocus);
+    return () => window.removeEventListener('visibilitychange', onFocus);
+  }, [fetchUnread]);
 
   return (
     <div className="pb-24"> {/* Padding for bottom bar */}

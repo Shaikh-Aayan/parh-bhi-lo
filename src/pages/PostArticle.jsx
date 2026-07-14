@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../lib/ToastContext';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
 import { addHours, formatISO } from 'date-fns';
 
 export default function PostArticle() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const isAdmin = profile?.role === 'admin';
 
   const [loading, setLoading] = useState(true);

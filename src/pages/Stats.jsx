@@ -39,36 +39,50 @@ export default function Stats() {
   }, [trophySeen]);
 
   const fetchStats = async () => {
-    const [statsRes, setRes] = await Promise.all([
-      supabase.rpc('get_leaderboard'),
-      supabase.from('app_settings').select('*').eq('id', 1).single()
-    ]);
-    
-    if (statsRes.data) setStats(statsRes.data);
-    if (setRes.data) setSettings(setRes.data);
-
-    if (isAdmin) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const [arts, inters, profs] = await Promise.all([
-        supabase.from('articles').select('id, title, is_mandatory').gte('posted_at', todayStr),
-        supabase.from('article_interactions').select('*').gte('created_at', todayStr),
-        supabase.from('profiles').select('*').neq('role', 'admin')
+    setLoading(true);
+    try {
+      const [statsRes, setRes] = await Promise.all([
+        supabase.rpc('get_leaderboard'),
+        supabase.from('app_settings').select('*').eq('id', 1).single()
       ]);
-      setTodayArticles(arts.data || []);
-      setTodayInteractions(inters.data || []);
-      setMembers(profs.data || []);
-    }
 
-    // Fetch current user's interactions for streak/laziness
-    if (profile?.id) {
-      const { data: myInts } = await supabase
-        .from('article_interactions')
-        .select('read_at, is_read')
-        .eq('user_id', profile.id)
-        .order('read_at', { ascending: false });
-      if (myInts) setMyInteractions(myInts);
-    }
+      if (statsRes.error) {
+        console.error('Leaderboard fetch error:', statsRes.error);
+        addToast('Leaderboard load failed.', 'error');
+      } else if (statsRes.data) {
+        setStats(statsRes.data);
+      }
 
+      if (setRes.error) {
+        console.error('Settings fetch error:', setRes.error);
+      } else if (setRes.data) {
+        setSettings(setRes.data);
+      }
+
+      if (isAdmin) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const [arts, inters, profs] = await Promise.all([
+          supabase.from('articles').select('id, title, is_mandatory').gte('posted_at', todayStr),
+          supabase.from('article_interactions').select('*').gte('created_at', todayStr),
+          supabase.from('profiles').select('*').neq('role', 'admin')
+        ]);
+        setTodayArticles(arts.data || []);
+        setTodayInteractions(inters.data || []);
+        setMembers(profs.data || []);
+      }
+
+      if (profile?.id) {
+        const { data: myInts } = await supabase
+          .from('article_interactions')
+          .select('read_at, is_read')
+          .eq('user_id', profile.id)
+          .order('read_at', { ascending: false });
+        if (myInts) setMyInteractions(myInts);
+      }
+    } catch (err) {
+      console.error('fetchStats exception:', err);
+      addToast('Stats load failed.', 'error');
+    }
     setLoading(false);
   };
 
